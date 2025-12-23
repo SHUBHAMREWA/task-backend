@@ -185,8 +185,9 @@ export const forgotPassword = async (req, res) => {
     await user.save({ validateBeforeSave: false });
 
     // Create reset url
-    // NOTE: In production, change localhost:5173 to your frontend domain
-    const resetUrl = `http://localhost:5173/reset-password/${resetToken}`;
+    // NOTE: using Vercel frontend domain
+    const resetUrl = `https://task-frontent-indol.vercel.app/reset-password/${resetToken}`;
+
 
     const message = `You are receiving this email because you (or someone else) has requested the reset of a password. Please make a PUT request to: \n\n ${resetUrl}`;
 

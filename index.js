@@ -19,6 +19,7 @@ app.use(
     origin: function (origin, callback) {
       const allowedOrigins = [
         "http://localhost:5173",
+        "https://task-frontent-indol.vercel.app",
         "https://task-frontent-indol.vercel.app/",
       ];
 
