@@ -5,6 +5,8 @@ import genToken from "../utils/genToken.js";
 import bcrypt from "bcryptjs";
 import validator from "validator";
 import crypto from "crypto";
+import sendEmail from "../utils/sendEmail.js";
+
 
 // signup Controller
 export const signUp = async (req, res) => {
@@ -180,7 +182,7 @@ export const forgotPassword = async (req, res) => {
     // Set expire time (10 minutes)
     user.resetPasswordExpire = Date.now() + 10 * 60 * 1000;
 
-    await user.save();
+    await user.save({ validateBeforeSave: false });
 
     // Create reset url
     // NOTE: In production, change localhost:5173 to your frontend domain
@@ -188,25 +190,29 @@ export const forgotPassword = async (req, res) => {
 
     const message = `You are receiving this email because you (or someone else) has requested the reset of a password. Please make a PUT request to: \n\n ${resetUrl}`;
 
-    console.log("------------------------------------------");
-    console.log("🔑 PASSWORD RESET LINK (Simulated Email):");
-    console.log(resetUrl);
-    console.log("------------------------------------------");
+    try {
+        await sendEmail({
+            email: user.email,
+            subject: "Password Reset Token",
+            message: message,
+            url: resetUrl
+        });
 
-    // Since we don't have email setup, we just return success
-    // In real app, send email here
-    
-    res.status(200).json({
-      success: true,
-      message: "Email sent (Check server console for link)"
-    });
+        res.status(200).json({
+            success: true,
+            message: `Email sent to ${user.email}`
+        });
+    } catch (err) {
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpire = undefined;
+        await user.save({ validateBeforeSave: false });
+        return res.status(500).json({ success: false, message: "Email could not be sent. " + err.message });
+    }
 
   } catch (error) {
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpire = undefined;
-    await user.save();
-    res.status(500).json({ success: false, message: "Email could not be sent" });
+    res.status(500).json({ success: false, message: "Server Error: " + error.message });
   }
+
 };
 
 // Reset Password
@@ -252,7 +258,9 @@ export const changePassword = async (req, res) => {
   const { currentPassword, newPassword } = req.body;
 
   try {
+    console.log("Attempting Password Change for User ID:", req.userId);
     const user = await User.findById(req.userId).select('+password');
+
 
     // Check current password
     const isMatch = await bcrypt.compare(currentPassword, user.password);
